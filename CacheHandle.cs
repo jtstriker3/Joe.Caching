@@ -44,7 +44,10 @@ namespace Joe.Caching
         {
             int hash = Function.GetHashCode();
             foreach (var parameter in parameters)
-                hash += parameter.GetHashCode();
+                if (parameter != null)
+                    hash += parameter.GetHashCode();
+                else
+                    hash += -1;
 
             return hash;
         }
