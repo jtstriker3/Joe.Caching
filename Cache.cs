@@ -20,12 +20,24 @@ namespace Joe.Caching
             }
         }
 
-        public void Add(String key, TimeSpan duration, Delegate handle)
+        public void Add(String key, TimeSpan duration, Delegate handle, Boolean overwrite)
         {
+            //if (_delegates.ContainsKey(key))
+            //    
+
+            //Overwrite Delegate
             if (_delegates.ContainsKey(key))
-                throw new Exception("Cache already contains an entry for the given key");
+                if (overwrite)
+                    _delegates.Remove(key);
+                else
+                    throw new Exception("Cache already contains an entry for the given key");
 
             _delegates.Add(key, new CacheHandle(handle, duration, CacheProvider));
+        }
+
+        public void Add(String key, TimeSpan duration, Delegate handle)
+        {
+            Add(key, duration, handle, true);
         }
 
         public void Remove(String key)
