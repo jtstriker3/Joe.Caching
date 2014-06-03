@@ -3,14 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Collections.Concurrent;
 
 namespace Joe.Caching
 {
     public class Cache
     {
-        public static ICacheProvider<int, Object> CacheProvider { get; set; }
+        public static ICacheProvider<String, Object> CacheProvider { get; set; }
         private static Cache _instance;
-        private IDictionary<String, CacheHandle> _delegates = new Dictionary<String, CacheHandle>();
+        private ConcurrentDictionary<String, CacheHandle> _delegates = new ConcurrentDictionary<String, CacheHandle>();
         public static Cache Instance
         {
             get
@@ -20,29 +21,18 @@ namespace Joe.Caching
             }
         }
 
-        public void Add(String key, TimeSpan duration, Delegate handle, Boolean overwrite)
-        {
-            //if (_delegates.ContainsKey(key))
-            //    
-
-            //Overwrite Delegate
-            if (_delegates.ContainsKey(key))
-                if (overwrite)
-                    _delegates.Remove(key);
-                else
-                    throw new Exception("Cache already contains an entry for the given key");
-
-            _delegates.Add(key, new CacheHandle(handle, duration, CacheProvider));
-        }
-
         public void Add(String key, TimeSpan duration, Delegate handle)
         {
-            Add(key, duration, handle, true);
+            _delegates.AddOrUpdate(key, new CacheHandle(handle, duration, key, CacheProvider), (String newKey, CacheHandle handleToAdd) =>
+            {
+                return handleToAdd;
+            });
         }
 
         public void Remove(String key)
         {
-            _delegates.Remove(key);
+            CacheHandle outHandle = null;
+            _delegates.TryRemove(key, out outHandle);
         }
 
         public void Flush(String key)
@@ -67,6 +57,32 @@ namespace Joe.Caching
             if (_delegates.ContainsKey(key))
                 return _delegates[key].GetItem(parameters);
             return null;
+        }
+
+        public Object GetOrAdd(String key, TimeSpan duration, Delegate handle, params Object[] parameters)
+        {
+            if (_delegates.ContainsKey(key))
+                return this.Get(key, parameters);
+            else
+            {
+                this.Add(key, duration, handle);
+                return this.Get(key, parameters);
+            }
+
+        }
+
+        public void FlushMany(String filter)
+        {
+            var items = _delegates.Where(handle => handle.Key.Contains(filter));
+            foreach (var item in items)
+                item.Value.Flush();
+        }
+
+        public void FlushMany(String filter, String keyNotToFlush = null, params Object[] parameters)
+        {
+            var items = _delegates.Where(handle => handle.Key.Contains(filter) && handle.Key != keyNotToFlush);
+            foreach (var item in items)
+                item.Value.FlushItem(parameters);
         }
     }
 }

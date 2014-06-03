@@ -8,10 +8,10 @@ namespace Joe.Caching
 {
     public interface ICacheProvider<TKey, TValue>
     {
-        void Add(TKey key, TValue value);
+        TValue AddOrUpdate(TKey key, TValue addValue, Func<TKey, TValue, TValue> updateValueFactory);
         TValue this[TKey key] { get; set; }
         bool ContainsKey(TKey key);
-        bool Remove(TKey key);
         void Clear();
+        bool TryRemove(TKey key, out TValue value);
     }
 }

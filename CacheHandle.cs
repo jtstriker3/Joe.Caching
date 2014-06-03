@@ -1,8 +1,11 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Serialization;
 
 namespace Joe.Caching
 {
@@ -11,13 +14,15 @@ namespace Joe.Caching
         public Delegate Function { get; private set; }
         private TimeSpan Duration { get; set; }
         private DateTime Experiation { get; set; }
-        private ICacheProvider<int, Object> CachedObjects { get; set; }
+        private ICacheProvider<String, Object> CachedObjects { get; set; }
+        private String Key { get; set; }
 
-        public CacheHandle(Delegate function, TimeSpan duration, ICacheProvider<int, Object> cachedObjectProvider = null)
+        public CacheHandle(Delegate function, TimeSpan duration, String key, ICacheProvider<String, Object> cachedObjectProvider = null)
         {
             Function = function;
             Duration = duration;
-            Experiation = DateTime.Now.Add(duration);
+            this.SetNewExperiation();
+            Key = key;
             CachedObjects = cachedObjectProvider ?? new DefaultCacheProvider();
         }
 
@@ -25,14 +30,22 @@ namespace Joe.Caching
         {
             var key = this.GetKey(parameters);
             if (!CachedObjects.ContainsKey(key))
-                CachedObjects.Add(key, this.Function.DynamicInvoke(parameters));
+                CachedObjects.AddOrUpdate(key, this.Function.DynamicInvoke(parameters), (String updateKey, Object newObject) =>
+                {
+                    return newObject;
+                });
             else if (DateTime.Now > Experiation)
             {
-                Experiation = DateTime.Now.Add(Duration);
+                this.SetNewExperiation();
                 CachedObjects[key] = this.Function.DynamicInvoke(parameters);
             }
             return CachedObjects[key];
 
+        }
+
+        private void SetNewExperiation()
+        {
+            Experiation = Duration == TimeSpan.MaxValue ? DateTime.MaxValue : DateTime.Now.Add(Duration);
         }
 
         public void Flush()
@@ -40,16 +53,51 @@ namespace Joe.Caching
             Experiation = DateTime.Now;
         }
 
-        private int GetKey(Object[] parameters)
+        public void FlushItem(params Object[] parameters)
         {
-            int hash = Function.GetHashCode();
+            Object outObject = null;
+            var key = this.GetKey(parameters);
+            if (CachedObjects.ContainsKey(key))
+                CachedObjects.TryRemove(key, out outObject);
+        }
+
+        private string GetKey(Object[] parameters)
+        {
+
+            var hash = new StringBuilder();
+            hash.Append(Function.GetHashCode().ToString());
             foreach (var parameter in parameters)
                 if (parameter != null)
-                    hash += parameter.GetHashCode();
+                    hash.Append(GetJson(parameter));
                 else
-                    hash += -1;
+                    hash.Append(-1);
 
-            return hash;
+            return Key + GetMD5Hash(hash.ToString());
+        }
+
+        private String GetJson<T>(T source)
+        {
+            return JsonConvert.SerializeObject(source);
+        }
+
+        private String GetMD5Hash(String source)
+        {
+            MD5 md5 = System.Security.Cryptography.MD5.Create();
+            Byte[] hash = null;
+
+            var bytes = System.Text.ASCIIEncoding.ASCII.GetBytes(source);
+            hash = md5.ComputeHash(bytes);
+
+            StringBuilder sBuilder = new StringBuilder();
+            // Loop through each byte of the hashed data  
+            // and format each one as a hexadecimal string. 
+            for (int i = 0; i < hash.Length; i++)
+            {
+                sBuilder.Append(hash[i].ToString("x2"));
+            }
+
+            // Return the hexadecimal string. 
+            return sBuilder.ToString();
         }
     }
 }
