@@ -13,7 +13,7 @@ namespace Joe.Caching
     {
         public Delegate Function { get; private set; }
         private TimeSpan Duration { get; set; }
-        private DateTime Experiation { get; set; }
+        public DateTime Expiration { get; private set; }
         private ICacheProvider<String, Object> CachedObjects { get; set; }
         private String Key { get; set; }
 
@@ -21,7 +21,7 @@ namespace Joe.Caching
         {
             Function = function;
             Duration = duration;
-            this.SetNewExperiation();
+            this.SetNewExpiration();
             Key = key;
             CachedObjects = cachedObjectProvider ?? new DefaultCacheProvider();
         }
@@ -34,23 +34,27 @@ namespace Joe.Caching
                 {
                     return newObject;
                 });
-            else if (DateTime.Now > Experiation)
+            else if (DateTime.Now > Expiration)
             {
-                this.SetNewExperiation();
+                this.SetNewExpiration();
                 CachedObjects[key] = this.Function.DynamicInvoke(parameters);
             }
             return CachedObjects[key];
 
         }
 
-        private void SetNewExperiation()
+        public int CachedObjectCount(){
+            return this.CachedObjects.Count;
+        }
+
+        private void SetNewExpiration()
         {
-            Experiation = Duration == TimeSpan.MaxValue ? DateTime.MaxValue : DateTime.Now.Add(Duration);
+            Expiration = Duration == TimeSpan.MaxValue ? DateTime.MaxValue : DateTime.Now.Add(Duration);
         }
 
         public void Flush()
         {
-            Experiation = DateTime.Now;
+            Expiration = DateTime.Now;
         }
 
         public void FlushItem(params Object[] parameters)

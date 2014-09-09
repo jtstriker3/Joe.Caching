@@ -47,6 +47,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Cache.cs" />
+    <Compile Include="CachedItemView.cs" />
     <Compile Include="CacheHandle.cs" />
     <Compile Include="DefaultCacheProvider.cs" />
     <Compile Include="ICacheProvider.cs" />

@@ -84,5 +84,16 @@ namespace Joe.Caching
             foreach (var item in items)
                 item.Value.FlushItem(parameters);
         }
+
+        public IEnumerable<CachedItemView> GetCacheItemViewList()
+        {
+            return this._delegates.Select(cacheHandle => new CachedItemView 
+            { 
+                Key = cacheHandle.Key, 
+                Expiration = cacheHandle.Value.Expiration, 
+                CachedObjectCount = cacheHandle.Value.CachedObjectCount() 
+            });
+        }
+
     }
 }

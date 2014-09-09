@@ -13,5 +13,6 @@ namespace Joe.Caching
         bool ContainsKey(TKey key);
         void Clear();
         bool TryRemove(TKey key, out TValue value);
+        int Count { get; }
     }
 }
