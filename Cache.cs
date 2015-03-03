@@ -7,7 +7,7 @@ using System.Collections.Concurrent;
 
 namespace Joe.Caching
 {
-    public class Cache
+    public partial class Cache
     {
         public static ICacheProvider<String, Object> CacheProvider { get; set; }
         private static Cache _instance;
@@ -59,6 +59,13 @@ namespace Joe.Caching
             return null;
         }
 
+        public TResult Get<TResult>(String key, params Object[] parameters)
+        {
+            if (_delegates.ContainsKey(key))
+                return (TResult)_delegates[key].GetItem(parameters);
+            return default(TResult);
+        }
+
         public Object GetOrAdd(String key, TimeSpan duration, Delegate handle, params Object[] parameters)
         {
             if (_delegates.ContainsKey(key))
@@ -87,11 +94,11 @@ namespace Joe.Caching
 
         public IEnumerable<CachedItemView> GetCacheItemViewList()
         {
-            return this._delegates.Select(cacheHandle => new CachedItemView 
-            { 
-                Key = cacheHandle.Key, 
-                Expiration = cacheHandle.Value.Expiration, 
-                CachedObjectCount = cacheHandle.Value.CachedObjectCount() 
+            return this._delegates.Select(cacheHandle => new CachedItemView
+            {
+                Key = cacheHandle.Key,
+                Expiration = cacheHandle.Value.Expiration,
+                CachedObjectCount = cacheHandle.Value.CachedObjectCount()
             });
         }
 
