@@ -6,13 +6,13 @@ using System.Threading.Tasks;
 
 namespace Joe.Caching
 {
-    public interface ICacheProvider<TKey, TValue>
+    public interface ICacheProvider
     {
-        TValue AddOrUpdate(TKey key, TValue addValue, Func<TKey, TValue, TValue> updateValueFactory);
-        TValue this[TKey key] { get; set; }
-        bool ContainsKey(TKey key);
+        CachedObject AddOrUpdate(String key, CachedObject addValue, Func<String, CachedObject, CachedObject> updateValueFactory);
+        CachedObject this[String key] { get; set; }
+        bool ContainsKey(String key);
         void Clear();
-        bool TryRemove(TKey key, out TValue value);
+        bool TryRemove(String key, out CachedObject value);
         int Count { get; }
     }
 }

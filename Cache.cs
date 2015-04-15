@@ -9,7 +9,7 @@ namespace Joe.Caching
 {
     public partial class Cache
     {
-        public static ICacheProvider<String, Object> CacheProvider { get; set; }
+        public static ICacheProvider CacheProvider { get; set; }
         private static Cache _instance;
         private ConcurrentDictionary<String, CacheHandle> _delegates = new ConcurrentDictionary<String, CacheHandle>();
         public static Cache Instance
@@ -97,7 +97,6 @@ namespace Joe.Caching
             return this._delegates.Select(cacheHandle => new CachedItemView
             {
                 Key = cacheHandle.Key,
-                Expiration = cacheHandle.Value.Expiration,
                 CachedObjectCount = cacheHandle.Value.CachedObjectCount()
             });
         }

@@ -7,7 +7,7 @@ using System.Collections.Concurrent;
 
 namespace Joe.Caching
 {
-    public class DefaultCacheProvider : ConcurrentDictionary<String, Object>, ICacheProvider<String, Object>
+    class DefaultCacheProvider : ConcurrentDictionary<String, CachedObject>, ICacheProvider
     {
     }
 }

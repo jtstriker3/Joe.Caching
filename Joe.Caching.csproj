@@ -48,8 +48,10 @@
   <ItemGroup>
     <Compile Include="Cache.cs" />
     <Compile Include="CachedItemView.cs" />
+    <Compile Include="CachedObject.cs" />
     <Compile Include="CacheHandle.cs" />
     <Compile Include="DefaultCacheProvider.cs" />
+    <Compile Include="DoNotHash.cs" />
     <Compile Include="FuncGeneration.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>

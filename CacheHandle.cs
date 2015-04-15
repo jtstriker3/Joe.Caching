@@ -9,57 +9,67 @@ using System.Xml.Serialization;
 
 namespace Joe.Caching
 {
-    public class CacheHandle
+    class CacheHandle
     {
         public Delegate Function { get; private set; }
         private TimeSpan Duration { get; set; }
-        public DateTime Expiration { get; private set; }
-        private ICacheProvider<String, Object> CachedObjects { get; set; }
+        private ICacheProvider CachedObjects { get; set; }
         private String Key { get; set; }
+        private bool isZeroTimeSpan { get; set; }
 
-        public CacheHandle(Delegate function, TimeSpan duration, String key, ICacheProvider<String, Object> cachedObjectProvider = null)
+        public CacheHandle(Delegate function, TimeSpan duration, String key, ICacheProvider cachedObjectProvider = null)
         {
             Function = function;
             Duration = duration;
-            this.SetNewExpiration();
             Key = key;
             CachedObjects = cachedObjectProvider ?? new DefaultCacheProvider();
+            isZeroTimeSpan = duration.TotalMilliseconds == 0.0;
         }
 
         public Object GetItem(params Object[] parameters)
         {
-            var key = this.GetKey(parameters);
-            if (!CachedObjects.ContainsKey(key))
-                CachedObjects.AddOrUpdate(key, this.Function.DynamicInvoke(parameters), (String updateKey, Object newObject) =>
-                {
-                    return newObject;
-                });
-            else if (DateTime.Now > Expiration)
+            if (!isZeroTimeSpan)
             {
-                this.SetNewExpiration();
-                CachedObjects[key] = this.Function.DynamicInvoke(parameters);
+                var key = this.GetKey(parameters);
+                if (!CachedObjects.ContainsKey(key))
+                    CachedObjects.AddOrUpdate(key,
+                        new CachedObject(this.GetNewExpiration(), this.Function.DynamicInvoke(parameters)),
+                        (String updateKey, CachedObject newObject) =>
+                        {
+                            return new CachedObject(this.GetNewExpiration(), newObject);
+                        });
+                else
+                {
+                    var cachedObject = CachedObjects[key];
+                    if (cachedObject.Expiration <= DateTime.Now)
+                        CachedObjects[key] = new CachedObject(this.GetNewExpiration(), this.Function.DynamicInvoke(parameters));
+                }
+
+                return CachedObjects[key].Value;
             }
-            return CachedObjects[key];
+            else
+                return this.Function.DynamicInvoke(parameters);
 
         }
 
-        public int CachedObjectCount(){
+        public int CachedObjectCount()
+        {
             return this.CachedObjects.Count;
         }
 
-        private void SetNewExpiration()
+        private DateTime GetNewExpiration()
         {
-            Expiration = Duration == TimeSpan.MaxValue ? DateTime.MaxValue : DateTime.Now.Add(Duration);
+            return Duration == TimeSpan.MaxValue ? DateTime.MaxValue : DateTime.Now.Add(Duration);
         }
 
         public void Flush()
         {
-            Expiration = DateTime.Now;
+            CachedObjects.Clear();
         }
 
         public void FlushItem(params Object[] parameters)
         {
-            Object outObject = null;
+            CachedObject outObject = null;
             var key = this.GetKey(parameters);
             if (CachedObjects.ContainsKey(key))
                 CachedObjects.TryRemove(key, out outObject);
@@ -67,14 +77,20 @@ namespace Joe.Caching
 
         private string GetKey(Object[] parameters)
         {
-
+            var parameterInfos = Function.Method.GetParameters();
             var hash = new StringBuilder();
             hash.Append(Function.GetHashCode().ToString());
+            var count = 0;
             foreach (var parameter in parameters)
-                if (parameter != null)
-                    hash.Append(GetJson(parameter));
-                else
-                    hash.Append(-1);
+            {
+                var doNotHash = parameterInfos[count].GetCustomAttributes(typeof(DoNotHashAttribute), true).Count() > 0;
+                if (!doNotHash)
+                    if (parameter != null)
+                        hash.Append(GetJson(parameter));
+                    else
+                        hash.Append(-1);
+                count++;
+            }
 
             return Key + GetMD5Hash(hash.ToString());
         }
