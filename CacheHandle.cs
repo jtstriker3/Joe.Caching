@@ -36,13 +36,18 @@ namespace Joe.Caching
                         new CachedObject(this.GetNewExpiration(), this.Function.DynamicInvoke(parameters)),
                         (String updateKey, CachedObject newObject) =>
                         {
-                            return new CachedObject(this.GetNewExpiration(), newObject);
+                            return newObject;
                         });
                 else
                 {
                     var cachedObject = CachedObjects[key];
                     if (cachedObject.Expiration <= DateTime.Now)
-                        CachedObjects[key] = new CachedObject(this.GetNewExpiration(), this.Function.DynamicInvoke(parameters));
+                        CachedObjects.AddOrUpdate(key,
+                        new CachedObject(this.GetNewExpiration(), this.Function.DynamicInvoke(parameters)),
+                        (String updateKey, CachedObject newObject) =>
+                        {
+                            return newObject;
+                        });
                 }
 
                 return CachedObjects[key].Value;
